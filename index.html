@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>扫雷</title>
+	</head>
+	<link rel="stylesheet" href="css/main.css">
+	<link rel="stylesheet" href="lib/font-awesome-4.7.0/css/font-awesome.min.css">
+	<body></body>
+	<script>
+		var boomNum = 40;
+		var width = 15;
+		var endGame = false;
+		/*
+		 * 生成方阵数组
+		 *     Y
+		 * +--->
+		 * |
+		 * V X
+		 */
+		var mainDiv = document.createElement("div");
+		mainDiv.className = "mainDiv";
+		document.body.appendChild(mainDiv);
+		
+		var rate = 800/15-2 >> 0;
+		var blocks = new Array();
+		for(var num_x = 0; num_x < width; num_x++){
+			for(var num_y = 0; num_y < width; num_y++){
+				//mainDiv.innerHTML += "<div id='b_" + (num_x * 1000 + num_y) + "' class='block covered hide' style='width:" + rate + "%;height:" + rate + "%;'></div>";
+				var block = document.createElement("div");
+				block.id = "b_" + (num_x * 1000 + num_y);
+				block.className = "block";
+				block.style.width = rate+"px";
+				block.style.height = rate+"px";
+				blocks.push(block);
+			}
+		}
+		var boomArray = new Array();
+		var backNum = width - 1;
+		var lastRowNum = blocks.length - width;
+		/**
+		 * 是否炸弹
+		 * @param {Object} self
+		 */
+		function isBoom(self){
+			if(self.className.indexOf("boom") > -1) 
+				return true;
+			return false;
+		}
+		/**
+		 * 炸弹位置是否已占用
+		 * @param {Object} boomId
+		 * @param {Object} boomArray
+		 */
+		function boomPositionExists(boomId, boomArray){
+			var i=0;
+			while(i < boomArray.length){
+				if(boomArray[i] == boomId){
+					return true;
+				}
+				i++;
+			}
+			return false;
+		}
+		/**
+		 * 随机添加炸弹
+		 * @param {Object} width
+		 * @param {Object} boomArray
+		 * @param {Object} num
+		 */
+		function addRandomBoom(width, boomArray, num){
+			if(typeof width != "number" || typeof num != "number" || typeof boomArray == "undefined") return ; 
+			var x = Math.random()*width >> 0;
+			var y = Math.random()*width >> 0;
+			var boomId = x * 1000 + y;
+			var blockIndex = x * width + y;
+			
+			if(!boomPositionExists(boomId, boomArray) && borderChecking(blockIndex, isBoom) < 3){
+				boomArray.push(boomId);
+				num -= 1;
+				if(num <= 0){
+					return ;
+				}else{
+					addRandomBoom(width, boomArray, num);
+				} 
+			}else{
+				this.addRandomBoom(width, boomArray, num);
+			}
+		}
+		/**
+		 * 边界检测
+		 * @param {Object} num
+		 * @param {Object} func
+		 */
+		function borderChecking(num, func, count){
+			if(typeof count == "undefined") count = 0;
+			if(num>backNum){  //  上边检测
+				if(func(blocks[num - width])) count++;
+			}
+			if(num<lastRowNum){  //  下边检测
+				if(func(blocks[num + width])) count++;
+			}
+			if(num%width != 0){	// 左边检测
+				if(func(blocks[num - 1])) count++;
+			}
+			if(num%width != backNum){  //  右边检测
+				if(func(blocks[num + 1])) count++;
+			}
+			if(num>width && num%width != 0){  // 左上
+				if(func(blocks[num - width - 1])) count++;
+			}
+			if(num>width && num%width != backNum){  // 右上
+				if(func(blocks[num - width + 1])) count++;
+			}
+			if(num<lastRowNum && num%width != 0){  // 左下
+				if(func(blocks[num + width - 1])) count++;
+			}
+			if(num<lastRowNum && num%width != backNum){  // 右下
+				if(func(blocks[num + width + 1])) count++;
+			}
+			return count;
+		}
+		/**
+		 * 展现边界
+		 * @param {Object} self
+		 */
+		function showBorder(self){
+			var originClassName = self.className;
+			var covered_index = originClassName.indexOf("covered");
+			if(covered_index <= -1) 
+				return ;
+			self.className = originClassName.slice(0, covered_index) + originClassName.slice(covered_index+7);
+			
+			var span = self.children[0];
+			if(typeof span != "undefined"){
+				var spanClassName = span.className;
+				var hide_index = originClassName.indexOf("hide");
+				if(covered_index <= -1) 
+					return ;
+				span.className = spanClassName.slice(0, covered_index) + spanClassName.slice(covered_index+4);
+
+			}else{
+				var id_value = parseInt(self.id.substring(2));
+				var value_x = id_value/1000 >> 0;
+				var value_y = id_value%1000;
+				var num = value_x*width + value_y;
+				borderChecking(num, showBorder);
+			}
+		}
+		/**
+		 * 引爆所有，游戏结束
+		 * @param {Object} self
+		 */
+		function showBooms(self, num){
+			var oriClassName = self.className;
+			var covered_index = oriClassName.indexOf("covered");
+			if(covered_index > -1){
+				self.className = oriClassName.slice(0, covered_index);
+			}
+			
+			if(typeof num == "undefined"){
+				num = boomArray.length;
+				self.className += " activeBoom";
+			}
+			num -= 1;
+			if(num > -1){
+				var value_x = boomArray[num]/1000 >> 0;
+				var value_y = boomArray[num]%1000;
+				showBooms(blocks[value_x*width + value_y], num);
+			}else{
+				endGame = true;	
+			}
+		}
+		/**
+		 * 添加地雷
+		 */
+		addRandomBoom(width, boomArray, boomNum);
+		/**
+		 * 添加地雷位置
+		 */
+		for(var i=0; i<boomArray.length; i++){
+			var x = boomArray[i]/1000 >> 0;
+			var y = boomArray[i]%1000;
+			blocks[x*width+y].className += " boom";
+		}
+		/**
+		 * 计算地雷周围数字
+		 */
+		for(var i=0; i<blocks.length; i++){
+			// 覆盖原先显示
+			blocks[i].className += " covered";
+			// 添加点击事件
+			blocks[i].onmousedown = function(e){
+				if(!endGame && this.className.indexOf("covered") > -1){
+					var key = e.which;
+					if(key == 3){	// 右键
+						e.preventDefault();
+						if(this.innerHTML.indexOf("flag") > -1){
+							this.removeChild(this.lastChild());
+						}else{
+							var e = document.createElement("i");
+							e.className = "fa fa-flag fa-2x flag";
+							e.style.lineHeight = rate+"px";
+							this.appendChild(e);
+						}
+					}
+					if(key == 1){
+						if(this.className.indexOf("boom") > -1){
+							// 显示炸弹爆点 游戏结束
+							showBooms(this);
+						}else{
+							// 显示周围区块
+							showBorder(this);
+						}
+					}
+				}
+			}
+			// 炸弹检测
+			if(blocks[i].className.indexOf("boom") > -1) continue;
+			var num = borderChecking(i, isBoom);
+			if(num > 0)
+				blocks[i].innerHTML = "<span class='Num" + num + " hide' style='line-height:"+rate+"px'>" + num + "</span>";
+		}
+		/**
+		 * 生成方阵
+		 */
+		for(var i=0; i<blocks.length; i++){
+			mainDiv.appendChild(blocks[i]);
+		}
+		
+	</script>
+</html>

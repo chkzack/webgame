@@ -1,0 +1,112 @@
+* {
+	margin: 0px auto;
+	padding: 0px;
+}
+body{
+	background: rgba(0, 0, 0, 0.9);
+	display: flex;
+	justify-content: center;
+	flex-direction: column;
+}
+.title {
+	color: rgba(240, 240, 240, 0.9);
+}
+.detailBar {
+	position: fixed;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	color: rgba(240, 240, 240, 0.9);
+	left: 10rem;
+}
+.detailBar input {
+	width: 10rem;
+}
+.detailBar button {
+	width: 10rem;
+	height: 3rem;
+}
+.mainDiv{
+	margin-top: 50px;
+	width: 800px;
+	height: 800px;
+}
+.block{
+	background: rgba(205, 205, 205, 1);
+	/*border: 1px solid rgba(255, 255, 255, 0.8);*/
+	float: left;
+	text-align: center;
+	line-height: 100%;
+	font-size: 16px;
+	font-family: "Impact, Charcoal, sans-serif";
+	font-weight: 600; 
+	color: rgba( 255, 255, 255, 1);
+	vertical-align: middle;
+	box-shadow: 0px 0px 5px rgba(255, 255, 255, 0.9) inset;
+	animation: blockInit 2s liner;
+}
+.block:hover{
+	cursor: pointer;
+	animation: blockhover 2S linear infinite;
+}
+.covered{
+	background: rgba(155, 155, 155, 0.9) !important;
+	anmation: staticAnime 1s liner;
+}
+
+.boom{
+	background: radial-gradient(circle, rgba(155, 155, 155, 0.9), rgba(0, 0, 0, 0.6));
+}
+.activeBoom{
+	background: radial-gradient(circle, rgba(255, 55, 55, 0.9), rgba(0, 0, 0, 0.6)) !important;
+}
+.Num1{
+	background: rgba(0, 205, 0, 0.5);
+}
+.Num2{
+	background: rgba(77, 205, 0, 0.5);
+}
+.Num3{
+	background: rgba(205, 77, 0, 0.5);
+}
+.Num4{
+	background: rgba(205, 0, 0, 0.5);
+}
+.Num1, .Num2, .Num3, .Num4, .flag{
+	width: 100%;
+    height: 100%;
+    display: block;
+    line-height: 100%;
+    box-shadow: 0px 0px 5px rgba(255, 255, 255, 0.9) inset;
+}
+.flag{
+	color: rgba(255, 55, 55, 0.9);
+}
+
+.hide{
+	display: none !important;
+}
+
+@keyframes blockhover{
+	0%{
+		box-shadow: 0 0 2px rgba(255, 255, 255, 0.2) inset;
+	}
+	50%{
+		box-shadow: 0 0 15px rgba(255, 255, 255, 1) inset;
+	}
+	100%{
+		box-shadow: 0 0 2px rgba(255, 255, 255, 0.2) inset;
+	}
+}
+
+@keyframes blockInit{
+	0%{-webkit-transform:rotate(0deg);}
+	50%{-webkit-transform:rotate(45deg);}
+	100%{-webkit-transform:rotate(90deg);}
+}
+
+@keyframes staticAnime{
+	0%{-webkit-transform:rotate(0deg);}
+	50%{-webkit-transform:rotate(45deg);}
+	100%{-webkit-transform:rotate(90deg);}
+}

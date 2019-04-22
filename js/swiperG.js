@@ -7,12 +7,19 @@
 	
 })("swiperG", function(){
 	
+	let loseCount = 0;			// 失败次数
+	let container = null;
+	let canvasContext = null;
+	
+	const baseIntervalNum = 1000;	// 用于生成ID的基础乘积数
 	// style
 	const color = {
 		grey: 'rgba(135, 135, 135, 1)',
 		black: 'rgba(0, 0, 0, 1)',
 		light_grey: 'rgba(235, 235, 235, 1)',
 		mid_grey: 'rgba(185, 185, 185, 1)',
+		light_blue: 'rgba(75, 125, 245, 1)',
+		dark_blue: 'rgba(25, 75, 125, 1)',
 		boom_red: 'rgba(235, 0, 0, 1)',
 		boom_black: 'rgba(0, 0, 0, 0.9)',
 		boom_white: 'rgba(255, 255, 255, 0.9)',
@@ -23,12 +30,10 @@
 		mark_red: 'rgba(225, 25, 0, 1)',
 		mark_yellow: 'rgba(255, 255, 0, 1)'
 	}
-		
-	const	font = {
+	const font = {
 		default: '1.5rem bolder Arial Black, Gadget, sans-serif',
 		title: '1.5rem bolder Impact, Charcoal, sans-serif'
 	}	
-	
 	const mark = {
 		none: 0,
 		boom: 1,
@@ -36,7 +41,7 @@
 	}
 	
 	// block
-	var Block = function(index, id, x, y, width, height, ctx){
+	let Block = function(index, id, x, y, width, height, ctx){
 		this._index = index;
 		this._id = id;				// 模块ID
 		this._isBoom = false;		// 是否炸弹
@@ -97,7 +102,12 @@
 			
 			this._context.strokeStyle = color.black;
 			this._context.strokeRect(this._x, this._y, this._width, this._height);
-			this._context.save();
+		},
+		reseting: function() {
+			this._context.fillStyle = color.light_blue;
+			this._context.fillRect(this._x, this._y, this._width, this._height);
+			this._context.strokeStyle = color.black;
+			this._context.strokeRect(this._x, this._y, this._width, this._height);
 		},
 		click: function(firstClick) {
 			this.Open();
@@ -126,35 +136,6 @@
 				this._context.save();
 			}else {
 				if(this._mark == mark.boom) return;
-				/* 
-				this._context.clearRect(this._x, this._y, this._width, this._height);
-				
-				if(true == firstClick) {
-					this._context.fillStyle = color.boom_red;
-				}else{
-					this._context.fillStyle = color.light_grey;
-				}
-				this._context.fillRect(this._x, this._y, this._width, this._height);
-				this._context.strokeStyle = color.black;
-				this._context.strokeRect(this._x, this._y, this._width, this._height);
-				
-				this._context.shadowBlur = 5;
-				this._context.shadowOffsetX = 1;
-				this._context.shadowOffsetY = 1;
-				
-				this._context.fillStyle = color.boom_black;
-				this._context.fillRect(this._x + this._width/2, this._y + this._height/8, this._width/8, this._height/8);
-				
-				this._context.beginPath();
-				this._context.ellipse(this._x + this._width/2, this._y + this._height/2, this._width/3, this._width/3, 0, 0, 2 * Math.PI);
-				this._context.fill();
-				this._context.closePath();
-				
-				this._context.beginPath();
-				this._context.fillStyle = color.boom_white;
-				this._context.ellipse(this._x + this._width/3, this._y + this._height/3, this._width/16, this._width/16, 0, 0, 2 * Math.PI);
-				this._context.fill();
-				this._context.closePath(); */
 				
 				this.boomAnimation(firstClick);	// 爆炸动画
 				
@@ -261,33 +242,34 @@
 			}
 			
 			delayAnimation();
-			
 		}
 	}
 	
 	// main
-	var Factory = function (options) {
-		this._boomNum = 50;				// 地雷数量
-		this._canvasWidth = 600;		// 默认canvas宽度
-		this._col = 15;			    // 默认列数
-		this._line = 15;				// 默认行数
-		this._endGame = false;			// 游戏结束标志
-		this._boomMap = new Map();	    // 地雷Map
+	let Factory = function (options) {
+		
 		this._blocks = new Array();		// 矩阵数组
-		this._options = {};
-		this._baseIntervalNum = 1000;	// 用于生成ID的基础乘积数
+		this._boomMap = new Map();	    // 地雷Map
+		this._maxBorderBoomCount = 4;	// 最后一次添加炸弹周围炸弹数
+		this._boomNum = 0;				// 地雷数量
+		
+		this._markNum = 0;				// 标记数量
+		this._lastMark = undefined;
+		
+		this._canvasWidth = 600;		// 默认canvas宽度
+		this._canvasHeight = 600;		// 默认canvas高度
+		this._col = 12;			    	// 默认列数
+		this._line = 12;				// 默认行数
 		this._lastColNum = this._col - 1;		// 列边界最后数
 		this._lastRowNum = this._col * this._line - this._col;// 行边界最后数
-		this._lastMark = undefined;
-		this._maxBorderBoomCount = 4;	// 最后一次添加炸弹周围炸弹数
-		this._markNum = 0;				// 标记数量
-		this._loseCount = 0;
 		
-		this._container = null;
-		this._canvasContext = null;
+		this._dialogOpen = false;		// 对话框弹出状态
+		this._endGame = false;			// 游戏结束状态
+		this._reseting = false;			// 重置中状态
+		
+		this._options = {};
 		
 		this.init();
-		window.swiperG = this;
 	}
 	
 	// method
@@ -317,13 +299,13 @@
 			if(typeof num != "number") return ; 
 			let x = Math.random() * this._col >> 0;
 			let y = Math.random() * this._line >> 0;
-			let boomId = x * this._baseIntervalNum + y;
+			let boomId = x * baseIntervalNum + y;
 			let blockIndex = x * this._col + y;
 			
 			if(!this.boomPositionExists(boomId) && this.borderChecking(blockIndex) < this._maxBorderBoomCount){
 				this._boomMap.set(boomId, this._blocks[blockIndex]);
 				this._blocks[blockIndex].setBoom();
-				num --;
+				--num;
 				if(num <= 0){
 					return ;
 				}else{
@@ -336,93 +318,108 @@
 		// 边界检测
 		borderChecking: function(num, count) { 
 			if(typeof count == "undefined") count = 0;
-			if(num > this._lastColNum){  //  上边检测
+			// 上边检测
+			if(num > this._lastColNum){  
 				if(this._blocks[num - this._col].isBoom()) count++;
 			}
-			if(num < this._lastRowNum){  //  下边检测
+			//  下边检测
+			if(num < this._lastRowNum){  
 				if(this._blocks[num + this._col].isBoom()) count++;
 			}
-			if(num % this._col != 0){	// 左边检测
+			// 左边检测
+			if(num % this._col != 0){	
 				if(this._blocks[num - 1].isBoom()) count++;
 			}
-			if(num % this._col != this._lastColNum){  //  右边检测
+			// 右边检测
+			if(num % this._col != this._lastColNum){  
 				if(this._blocks[num + 1].isBoom()) count++;
 			}
-			
-			if(num > this._lastColNum && num % this._col != 0){  // 左上
+			// 左上
+			if(num > this._lastColNum && num % this._col != 0){  
 				if(this._blocks[num - this._col - 1].isBoom()) count++;
 			}
-			if(num > this._lastColNum && num % this._col != this._lastColNum){  // 右上
+			// 右上
+			if(num > this._lastColNum && num % this._col != this._lastColNum){
 				if(this._blocks[num - this._col + 1].isBoom()) count++;
 			}
-			if(num < this._lastRowNum && num % this._col != 0){  // 左下
+			// 左下
+			if(num < this._lastRowNum && num % this._col != 0){  
 				if(this._blocks[num + this._col - 1].isBoom()) count++;
 			}
-			if(num < this._lastRowNum && num % this._col != this._lastColNum){  // 右下
+			// 右下
+			if(num < this._lastRowNum && num % this._col != this._lastColNum){
 				if(this._blocks[num + this._col + 1].isBoom()) count++;
 			}
 			return count;
 		},
 		// 展现边界
 		showBorder: function(self, firstClick) {
-			
+			if(this._reseting || this._endGame || this._dialogOpen) return;
 			if(!this.lastMarkCheck()) return;
 			
 			if(self.isBoom()) {
-				if(true == firstClick) {	// 第一次点中炸弹，结束游戏
+				// 第一次点中炸弹，结束游戏
+				if(true == firstClick) {	
 					self.click(true);
 					this.showAllBooms(self);
-					this._endGame = true;
 				}
 				return ;
 			}else{
-				self.click();	// 正常点击
+				// 正常点击
+				self.click();	
 			}
-
-			if(!self.isBoom() && self.getSurroundCount() > 0) {   // 非炸弹且有数字，不做边界检测
+			// 非炸弹且有数字，不做边界检测
+			if(!self.isBoom() && self.getSurroundCount() > 0) {   
 				return ;
-			}else {		// 非炸弹且没数字，做边界检测
+			}else {		
+				// 非炸弹且没数字，做边界检测
 				let num = self.getIndex();
 				let surroundArray = new Array();
 				let num_next = 0;
-				
-				if(num > this._lastColNum){  //  上边检测
+				// 上边检测
+				if(num > this._lastColNum){  
 					num_next = num - this._col;
 					if(!(num_next < 0) && !this._blocks[num_next].isOpen())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				if(num < this._lastRowNum){  //  下边检测
+				// 下边检测
+				if(num < this._lastRowNum){  
 					num_next = num + this._col;
 					if(!(num_next > this._blocks.length) && !this._blocks[num_next].isOpen())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				if(num % this._col != 0){	// 左边检测
+				// 左边检测
+				if(num % this._col != 0){	
 					num_next = num - 1;
 					if(!(num_next < 0) && !this._blocks[num_next].isOpen())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				if(num % this._col != this._lastColNum){  //  右边检测
+				// 右边检测
+				if(num % this._col != this._lastColNum){  
 					num_next = num + 1;
 					if(!(num_next > this._blocks.length) && !this._blocks[num_next].isOpen())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				
-				if(num > this._lastColNum && num % this._col != 0){  // 左 上
+				// 左上
+				if(num > this._lastColNum && num % this._col != 0){  
 					num_next = num - this._col - 1;
 					if(!(num_next < 0) && !this._blocks[num_next].isOpen() && !this._blocks[num_next].isBoom())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				if(num < this._lastRowNum && num % this._col != 0){  // 左下
+				// 左下
+				if(num < this._lastRowNum && num % this._col != 0){  
 					num_next = num + this._col - 1;
 					if(!(num_next > this._blocks.length) && !this._blocks[num_next].isOpen() && !this._blocks[num_next].isBoom())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				if(num > this._lastColNum && num % this._col != this._lastColNum){  // 右上
+				// 右上
+				if(num > this._lastColNum && num % this._col != this._lastColNum){
 					num_next = num - this._col + 1;
 					if(!(num_next < 0) && !this._blocks[num_next].isOpen() && !this._blocks[num_next].isBoom())
 						surroundArray.push(this._blocks[num_next]);
 				}
-				if(num < this._lastRowNum && num % this._col != this._lastColNum){  // 右下
+				// 右下
+				if(num < this._lastRowNum && num % this._col != this._lastColNum){
 					num_next = num + this._col + 1;
 					if(!(num_next > this._blocks.length) && !this._blocks[num_next].isOpen() && !this._blocks[num_next].isBoom())
 						surroundArray.push(this._blocks[num_next]);
@@ -434,6 +431,41 @@
 				return ;
 			}
 		},
+		// 计算所有方块周围地雷数
+		countBoomNum4AllBlock: function() { 
+			for(var i=0; i<this._blocks.length; i++) {
+				this._blocks[i].setSurroundCount(this.borderChecking(i));
+			}
+		},
+		// 最后一次标记检测
+		lastMarkCheck: function() {
+			if(this._lastMark != undefined) { 
+				if(this._boomMap.get(this._lastMark._id) == undefined 
+					&& this._blocks[this._lastMark._index]._mark == 1) {
+						this.showAllBooms(this._lastMark);
+						this._lastMark.markError();
+						return false;
+				}
+				--this._markNum;
+			}
+			return true;
+		},
+		// 标记操作并检测
+		mark: function(self){
+			if(!this._endGame && !self.isOpen()) {
+				if(!this.lastMarkCheck()){
+					this.endGame(false);
+					return;
+				}else {
+					this._lastMark = self;
+					self.mark();
+					// 游戏获胜结束
+					if(this._markNum == 0) {	
+						this.endGame(this.lastMarkCheck());
+					}
+				}
+			}
+		},
 		// 引爆所有，游戏结束
 		showAllBooms: function(self) { 
 			for(let b of this._boomMap) {
@@ -441,105 +473,44 @@
 					b[1].click();
 				}
 			}
+			this.endGame(false);	// 游戏失败
+		},
+		// 结束游戏
+		endGame: function(isSuccess) {
+			this._endGame = true;
 			
-			// 画出对话框
-			let main = this;
-			let width = main._container.clientWidth/2;
-			let height = main._container.clientHeight/2;
-			setTimeout(() => {
-				main._canvasContext.fillStyle = color.light_grey;
-				main._canvasContext.fillRect(width/2, height*3/4, width, height/2);
-				main._canvasContext.strokeStyle = color.black;
-				main._canvasContext.strokeRect(width/2, height*3/4, width, height/2);
-				main._canvasContext.fillStyle = color.black;
-				main._canvasContext.font = font.title;
-				if(main._loseCount < 3) {
-					main._canvasContext.fillText('(￣△￣；)', width, height);
+			if(isSuccess == true) {
+				this._drawDialog('Σ( ° △ °|||)︴成，成功了', '点击画面再试一次？', 200);
+				loseCount = 0;
+			}else {
+				if(loseCount < 3) {
+					this._drawDialog('(￣△￣；)游戏失败', '点击画面再试一次？', 200);
 				}else {
-					main._canvasContext.fillText('_(:з」∠)_可以调整难度哦', width, height);
+					this._drawDialog('_(:з」∠)_可以调整难度哦', '点击画面再试一次？', 200);
 				}
-				main._canvasContext.fillText('再试一次？', width + 10, height + 30);
-				
-				main._loseCount ++;
-			}, 500);
+				loseCount ++;
+			}
+		},
+		// 初始化游戏矩阵
+		initBlocks: function(canvasWidth) {
+			this._cleanCanvas();
+			this._boomMap.clear(); 			// 清空炸弹MAP
+			this._lastMark = undefined;
+			this._markNum = this._boomNum;
 			
-		},
-		// 计算地雷周围数字
-		countBoomNum4AllBlock: function() { 
-			for(var i=0; i<this._blocks.length; i++) {
-				this._blocks[i].setSurroundCount(this.borderChecking(i));
-			}
-		},
-		lastMarkCheck: function() {
-			if(this._lastMark != undefined 
-				&& this._boomMap.get(this._lastMark._id) == undefined 
-				&& this._blocks[this._lastMark._index]._mark == 1) {
-					this.showAllBooms(this._lastMark);
-					this._lastMark.markError();
-					this._endGame = true;
-					return false;
-			}
-			return true;
-		},
-		// 设立标志
-		mark: function(self){
-			if(!this._endGame && !self.isOpen() && this.lastMarkCheck()) {
-				this._lastMark = self;
-				self.mark();
-				
-				switch(self._mark) {
-					case mark.default: 
-						break;
-					case mark.boom:
-						this._markNum++;
-						break;
-					case mark.unknown:
-						this._markNum--;
-						break;
-				}
-				
-				if(this._markNum == this._boomNum) {
-					this.lastMarkCheck();
-					this._endGame = true;
-					
-					let main = this;
-					let width = main._container.clientWidth/2;
-					let height = main._container.clientHeight/2;
-					setTimeout(() => {
-						main._canvasContext.fillStyle = color.light_grey;
-						main._canvasContext.fillRect(width/2, height*3/4, width, height/2);
-						main._canvasContext.strokeStyle = color.black;
-						main._canvasContext.strokeRect(width/2, height*3/4, width, height/2);
-						main._canvasContext.fillStyle = color.black;
-						main._canvasContext.font = font.title;
-						main._canvasContext.fillText('Σ( ° △ °|||)︴成，成功了', width, height);
-						main._canvasContext.fillText('再试一次？', width + 10, height + 30);
-						
-						main._loseCount = 0;
-					}, 500);
-				}
-			}
-		},
-		initGame(canvasWidth) {
-			// 初始化矩阵
-			if(typeof canvasWidth != 'number' || canvasWidth < 1) {
-				canvasWidth = this._canvasWidth;
-			}else{
-				this._canvasWidth = canvasWidth;
-			}
-			var rate = canvasWidth / this._col >> 0;
+			let rate = this._canvasWidth / this._col >> 0;
 			if(this._blocks.length < 1) {	// 初始化矩阵
-				var blockSize = this._col * this._line;
-				for(var i=0,col=0,line=0; i<blockSize; i++,col++) {
+				let blockSize = this._col * this._line;
+				for(let i=0,col=0,line=0; i<blockSize; i++,col++) {
 					if(col == this._col) {	
 						col = 0;
 						line++;
 					}
-					var b = new Block(i, line * this._baseIntervalNum + col, col*rate, line*rate, rate, rate, this._canvasContext);
+					let b = new Block(i, line * baseIntervalNum + col, col*rate, line*rate, rate, rate, canvasContext);
 					this._blocks.push(b);
 				}
 			}else {
-				for(var b of this._blocks) {	// 重置矩阵
+				for(let b of this._blocks) {	// 重置矩阵
 					b.reset();
 				}
 			}
@@ -547,59 +518,126 @@
 			this.addRandomBoom(this._boomNum);
 			// 计算数字
 			this.countBoomNum4AllBlock();
-			// 挂载方阵
-			for(let b of this._blocks) b.show();
+			// 绘制
+			this._drawBlocks();
 		},
-		// 初始化游戏
+		// 重置游戏
+		reset: function(boomNum) {
+			if(this._reseting) return;
+			if(typeof boomNum == 'string') {
+				// 按钮重置游戏
+				boomNum = parseInt(boomNum);
+				if(typeof boomNum == 'number' && boomNum > 0 && boomNum < this._blocks.length*3/4) {
+					this._boomNum = boomNum;
+				}
+			}else{
+				// 屏蔽未弹出对话框时重置游戏
+				if(!this._dialogOpen) return;
+			}
+			this._reseting = true;
+			this._cleanCanvas();
+			this.initBlocks();
+		},
+		// 整体初始化
 		init: function() {
 			// 初始化canvas
-			var canvas = document.getElementById('container');
-			canvas.width = screen.availWidth>600?600:screen.availWidth;
-			canvas.height = screen.availWidth>600?600:screen.availWidth;
-			this._container = canvas;
-			this._canvasContext = canvas.getContext("2d");
-			this._canvasContext.textAlign = 'center';
-			// 游戏全局初始化
-			this.initGame(canvas.width);
+			let canvas = document.getElementById('container');
+			this._canvasWidth = canvas.width = screen.availWidth>600?600:screen.availWidth;
+			this._canvasHeight = canvas.height = screen.availWidth>600?600:screen.availWidth;
+			container = canvas;
+			canvasContext = canvas.getContext("2d");
+			canvasContext.textAlign = 'center';
+			
+			// 初始化方块矩阵
+			this.initBlocks();
 			// 监听事件
 			this.initInteractiveEvent();
 		},
-		// 重置
-		reset: function(num) {
-			this._canvasContext.clearRect(0, 0, this._canvasContext.width, this._canvasContext.height);
-			num = parseInt(num);
-			if(typeof num == 'number' && num > 0 && num < this._blocks.length*3/4) {
-				this._boomNum = num;
-			}
-			if(this._boomMap.size > 0) 
-				this._boomMap.clear(); // 清空炸弹MAP
-			this._lastMark = undefined;
-			this._markNum = 0;
-			this.initGame();
-			this._endGame = false;
+		// 清空画布
+		_cleanCanvas: function() {
+			//canvasContext.clearRect(0, 0, container.width, container.height);
+			canvasContext.fillStyle = color.black;
+			canvasContext.clearRect(0, 0, container.width, container.height);
 		},
+		// 绘制矩形
+		_drawBlocks: function() {
+			let index = 0;
+			let main = this;
+			let blocksAnimateId = 0;
+			
+			let drawBlocks = function() {
+				
+				if(index < main._blocks.length){
+					main._blocks[index].reseting();
+					++index;
+				}else{
+					// 重置游戏相关状态
+					for(let b of main._blocks) b.show();
+					main._endGame = false;
+					main._dialogOpen = false;
+					main._reseting = false;
+					window.cancelAnimationFrame(blocksAnimateId);
+					return;
+				}
+				
+				blocksAnimateId = window.requestAnimationFrame(drawBlocks);
+			}
+			
+			drawBlocks();
+			// for(let b of this._blocks) b.show();
+		},
+		// 弹出对话框
+		_drawDialog: function(title, content, delayMillis) {
+			if(typeof delayMillis != 'number' && delayMillis < 0) delayMillis = 1000;
+			
+			let main = this;
+			let width = container.clientWidth/2;
+			let height = container.clientHeight/2;
+			
+			let dialogAnimateId = 0;
+			let count = 0;
+			let countDown = 20;
+			let dialogAnimation = function() {
+				if(count < countDown) {
+					canvasContext.fillStyle = 'rgba(235, 235, 235, '+count/countDown+')';
+					canvasContext.fillRect(width/2, height*3/4, width, height/2);
+					canvasContext.strokeStyle = 'rgba(0, 0, 0, '+count/countDown+')';
+					canvasContext.strokeRect(width/2, height*3/4, width, height/2);
+					if(count > countDown/20) {
+						canvasContext.fillStyle = 'rgba(0, 0, 0, '+count/countDown+')';
+						canvasContext.font = font.title;
+						canvasContext.fillText(title, width, height);
+						canvasContext.fillText(content, width + 10, height + 30);
+					}
+					
+					++count;
+					dialogAnimateId = window.requestAnimationFrame(dialogAnimation);
+				}else {
+					main._dialogOpen = true;
+					window.cancelAnimationFrame(dialogAnimateId);
+				}
+			}
+			
+			setTimeout(() => {
+				dialogAnimation();
+			}, delayMillis);
+			
+		},
+		// 初始化事件
 		initInteractiveEvent: function() {
 			var main = this; 
 			document.getElementById('boomNum').value = this._boomNum;
 			// 屏蔽右击事件
 			document.oncontextmenu = function(e){return false;}
-			/*
-			document.addEventListener('mousemove', function(evt) {
-				var canvas = document.getElementById('container');
-				document.getElementById('mouse_x').value = evt.clientX - canvas.offsetLeft;
-				document.getElementById('mouse_y').value = evt.clientY - canvas.offsetTop;
-				document.getElementById('block_id').value = ((evt.clientY - canvas.offsetTop)/window.swiperG._canvasWidth * window.swiperG._line >> 0) * window.swiperG._col 
-																+ (evt.clientX - canvas.offsetLeft)/window.swiperG._canvasWidth * window.swiperG._col >> 0;
-			});
-			*/
+			// 鼠标事件
 			document.addEventListener('mousedown', function(evt) {
-				var canvas = document.getElementById('container');
+				let canvas = document.getElementById('container');
 				if(evt.clientX - canvas.offsetLeft > 0 
 					&& evt.clientY - canvas.offsetTop > 0 
 					&& evt.clientX - canvas.offsetLeft < canvas.clientWidth
 					&& evt.clientY - canvas.offsetTop < canvas.clientHeight ) {
-						
-					var blockId = ((evt.clientY - canvas.offsetTop)/main._canvasWidth * main._line >> 0) * main._col 
+					
+					let blockId = ((evt.clientY - canvas.offsetTop)/main._canvasWidth * main._line >> 0) * main._col 
 										+ (evt.clientX - canvas.offsetLeft)/main._canvasWidth * main._col >> 0;
 					if(!main._endGame) {
 						if(evt.which == 1) {
@@ -617,6 +655,7 @@
 					}
 				}
 			});
+			
 			document.getElementById('resetGame').addEventListener('click', function(){
 				main.reset(document.getElementById('boomNum').value);
 			});

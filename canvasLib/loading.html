@@ -27,16 +27,18 @@
 				let canvas = document.getElementById('container');
 				canvas.width = screen.availWidth - 20;
 				canvas.height = screen.availHeight - 20;
+				canvas.textAlign = 'center';
 				
 				let ctx = canvas.getContext('2d');
 				let width = canvas.clientWidth;
 				let height = canvas.clientHeight;
 				
-				let r = width<height?width/4:height/4;
-				let fontSize = r/2;
+				let r = width<height?width/3:height/3;
+				let lineWidth = r/8;
+				let fontSize = r/3;
 				let fontText = fontSize + 'px bolder Impact, Charcoal, sans-serif';
 				
-				let grad = ctx.createLinearGradient(width/4, height/4, width*3/4, height*3/4);
+				let grad = ctx.createLinearGradient(width/3, height/3, width*2/3, height*2/3);
 				grad.addColorStop(0, 'rgba(245, 0, 0, 1)');
 				grad.addColorStop(1, 'rgba(0, 0, 245, 1)');
 				
@@ -52,38 +54,17 @@
 					ctx.fillStyle = 'rgba(0, 0, 0, 1)';
 					ctx.fillRect(0, 0, width, height);
 					
-					ctx.lineWidth = 4;
-					ctx.strokeStyle = 'rgba(235, 235, 235, 1)';
-					ctx.beginPath();
-					ctx.ellipse(width/2, height/2, r, r, 0, 0, 2*Math.PI);
-					ctx.stroke();
-					ctx.closePath();
-					ctx.save();
-					
-					ctx.lineWidth = 10;
+					ctx.lineWidth = lineWidth;
 					ctx.strokeStyle = grad;
 					ctx.beginPath();
-					ctx.ellipse(width/2, height/2, r, r, 0, 0, 2*Math.PI*(count/1000));
+					ctx.ellipse(width/2, height/2, r, r, -Math.PI/2, 0, 2*Math.PI*(count/1000));
 					ctx.stroke();
 					ctx.closePath();
 					
 					ctx.font = fontText;
 					ctx.fillStyle = 'rgba(245, 245, 245, 1)';
 					num = (count/10 >> 0);
-					
-					if(num == 100) {
-						number = '100%';
-						fontCenter = width/2 - fontSize;
-					}else {
-						if(num < 10){
-							number = num + ' %';
-						}else {
-							number = num + '%';
-						}
-						fontCenter = width/2 - fontSize*3/4;
-					}
-					
-					ctx.fillText(number, fontCenter, height/2 + fontSize/2);
+					ctx.fillText(num, width/2 - fontSize/2, height/2 + fontSize/2);
 					
 					if(count < 1000) {
 						animatId = window.requestAnimationFrame(draw);

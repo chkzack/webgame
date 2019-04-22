@@ -1,5 +1,8 @@
-this is read me file which explains how this swiper game works:
-这是一个基于canvas扫雷程序
+## 简介
+##### 说明
+这是一个基于canvas的扫雷程序
 
 可自定义地雷数量
+
+目前已完成扫雷重置和引爆动效相关部分的代码，但仍有不足尚待修改
 

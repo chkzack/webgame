@@ -27,7 +27,20 @@
 	let canvasWidth = 600;		// 默认canvas宽度
 	let canvasHeight = canvasWidth + titleBarHeight;		// 默认canvas高度
 	
+	const dialogDisplayDelayTimeMillis = 1000;	// 对话窗口延时毫秒数
 	const baseIntervalNum = 1000;	// 用于生成ID的基础乘积数
+	
+	// font
+	const fontFamily = {
+		thin: ' bolder Arial Black, Gadget, sans-serif',
+		heavy: ' bolder Impact, Charcoal, sans-serif'
+	}
+	let fontSize = 10;
+	let font = {
+		default: fontSize + fontFamily.thin,
+		title: fontSize + fontFamily.heavy
+	}
+	
 	// style
 	const color = {
 		grey: 'rgba(135, 135, 135, 1)',
@@ -49,10 +62,6 @@
 		mark_red: 'rgba(225, 25, 0, 1)',
 		mark_yellow: 'rgba(255, 255, 0, 1)'
 	}
-	const font = {
-		default: '1.5rem bolder Arial Black, Gadget, sans-serif',
-		title: '1.5rem bolder Impact, Charcoal, sans-serif'
-	}	
 	const mark = {
 		none: 0,
 		boom: 1,
@@ -92,14 +101,17 @@
 		setSurroundCount: function(num) {
 			if(typeof num == "number" && num > 0) this._surroundCount = num;
 		},
+		getSurroundCount: function() {
+			return this._surroundCount;
+		},
 		isOpen: function() {
 			return this._isOpen;
 		},
 		Open: function() {
 			this._isOpen = true;
 		},
-		getSurroundCount: function() {
-			return this._surroundCount;
+		getMark: function() {
+			return this._mark;
 		},
 		show: function() {
 			ctx.fillStyle = color.light_grey;
@@ -107,13 +119,6 @@
 			ctx.fillStyle = color.grey;
 			ctx.fillRect(this._x, this._y + this._height*7/8, this._width, this._height/8);
 			ctx.fillRect(this._x + this._height*7/8, this._y + this._height/8, this._width/8, this._height*7/8);
-			
-			/* test 
-			var grad = ctx.createLinearGradient(this._x, this._y, this._x + this._width, this._y + this._height);
-			grad.addColorStop(0, color.light_grey);
-			grad.addColorStop(1, color.grey);
-			ctx.fillStyle = grad;
-			ctx.fillRect(this._x, this._y, this._width, this._height); */
 			
 			ctx.fillStyle = color.mid_grey;
 			ctx.fillRect(this._x + this._width/8, this._y + this._height/8, this._width*3/4, this._height*3/4);
@@ -156,15 +161,20 @@
 						break;
 					default: break;
 				}
-				if(this._surroundCount > 0) ctx.fillText(this._surroundCount, this._x + this._width/2, this._y + this._height/2 + 10);
+				if(this._surroundCount > 0) ctx.fillText(this._surroundCount, this._x + this._width/2, this._y + this._height*2/3);
 			}else {
 				if(this._mark == mark.boom) return;
 				this.boomAnimation(firstClick);	// 爆炸动画
 			}
 		},
-		mark: function() {
+		mark: function(num) {
 			if(this.isOpen()) return;
-			if(++this._mark > 2) this._mark = 0;
+			// 直接标记
+			if(typeof num == 'number' && num == mark.boom) {
+				this._mark = mark.boom;
+			}else {
+				if(++this._mark > mark.unknown) this._mark = mark.none;
+			}
 			this.show();
 			switch(this._mark) {
 				case mark.none:
@@ -367,7 +377,7 @@
 				// 第一次点中炸弹，结束游戏
 				if(true == firstClick) {	
 					self.click(true);
-					this.showAllBooms(self);
+					this.endGame(false, self);
 				}
 				return ;
 			}else{
@@ -375,9 +385,9 @@
 				self.click();	
 			}
 			// 非炸弹且有数字，不做边界检测
-			if(!self.isBoom() && self.getSurroundCount() > 0) {   
+			if(!self.isBoom() && self.getSurroundCount() > 0) {
 				return ;
-			}else {		
+			}else {
 				// 非炸弹且没数字，做边界检测
 				let num = self.getIndex();
 				let surroundArray = new Array();
@@ -391,7 +401,7 @@
 				// 下边检测
 				if(num < this._lastRowNum){  
 					num_next = num + this._col;
-					if(!(num_next > blocks.length) && !blocks[num_next].isOpen())
+					if(num_next < blocks.length && !blocks[num_next].isOpen())
 						surroundArray.push(blocks[num_next]);
 				}
 				// 左边检测
@@ -403,7 +413,7 @@
 				// 右边检测
 				if(num % this._col != this._lastColNum){  
 					num_next = num + 1;
-					if(!(num_next > blocks.length) && !blocks[num_next].isOpen())
+					if(num_next < blocks.length && !blocks[num_next].isOpen())
 						surroundArray.push(blocks[num_next]);
 				}
 				// 左上
@@ -415,7 +425,7 @@
 				// 左下
 				if(num < this._lastRowNum && num % this._col != 0){  
 					num_next = num + this._col - 1;
-					if(!(num_next > blocks.length) && !blocks[num_next].isOpen() && !blocks[num_next].isBoom())
+					if(num_next < blocks.length && !blocks[num_next].isOpen() && !blocks[num_next].isBoom())
 						surroundArray.push(blocks[num_next]);
 				}
 				// 右上
@@ -427,15 +437,155 @@
 				// 右下
 				if(num < this._lastRowNum && num % this._col != this._lastColNum){
 					num_next = num + this._col + 1;
-					if(!(num_next > blocks.length) && !blocks[num_next].isOpen() && !blocks[num_next].isBoom())
+					if(num_next < blocks.length && !blocks[num_next].isOpen() && !blocks[num_next].isBoom())
 						surroundArray.push(blocks[num_next]);
 				}
 				
 				for(let b of surroundArray) {
 					this.showBorder(b);
 				}
-				return ;
 			}
+			this.endGameCheck();
+		},
+		// 中键点击已开方格显示周围
+		showMarkedSurround: function(self, firstClick) {
+			if(reseting || endGame || dislogOpen) return;
+			if(!this.lastMarkCheck()) return;
+			
+			if(self.isOpen() && !self.isBoom()) {
+				let markedBoomNum = 0;
+				let openedNum = 0;
+				// 非炸弹且没数字，做边界检测
+				let num = self.getIndex();
+				let showArray = new Array();
+				let boomArray = new Array();
+				let num_next = 0;
+				// 上边检测
+				if(num > this._lastColNum){  
+					num_next = num - this._col;
+					if(num_next < 0) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 下边检测
+				if(num < this._lastRowNum){  
+					num_next = num + this._col;
+					if(!(num_next < blocks.length)) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 左边检测
+				if(num % this._col != 0){	
+					num_next = num - 1;
+					if(num_next < 0) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 右边检测
+				if(num % this._col != this._lastColNum){  
+					num_next = num + 1;
+					if(!(num_next < blocks.length)) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 左上
+				if(num > this._lastColNum && num % this._col != 0){  
+					num_next = num - this._col - 1;
+					if(num_next < 0) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 左下
+				if(num < this._lastRowNum && num % this._col != 0){  
+					num_next = num + this._col - 1;
+					if(!(num_next < blocks.length)) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 右上
+				if(num > this._lastColNum && num % this._col != this._lastColNum){
+					num_next = num - this._col + 1;
+					if(num_next < 0) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				// 右下
+				if(num < this._lastRowNum && num % this._col != this._lastColNum){
+					num_next = num + this._col + 1;
+					if(!(num_next < blocks.length)) return;
+					if(!blocks[num_next].isOpen()) {
+						if(blocks[num_next].isBoom()) {
+							blocks[num_next].getMark() == mark.boom? ++markedBoomNum: boomArray.push(blocks[num_next]);
+						}else {
+							showArray.push(blocks[num_next]);
+						}
+					}else {
+						++openedNum;
+					}
+				}
+				
+				if(markedBoomNum + openedNum == 8) return;
+				if(markedBoomNum == self.getSurroundCount()) {
+					for(let b of showArray) {
+						this.showBorder(b);
+					}
+				}
+				if(8 - openedNum == self.getSurroundCount()) {
+					for(let b of boomArray) {
+						b.mark(mark.boom);
+					}
+				}
+			}
+			this.endGameCheck();
 		},
 		// 计算所有方块周围地雷数
 		countBoomNum4AllBlock: function() { 
@@ -448,8 +598,8 @@
 			if(lastMark != undefined) { 
 				if(boomMap.get(lastMark._id) == undefined 
 					&& blocks[lastMark._index]._mark == 1) {
-						this.showAllBooms(lastMark);
 						lastMark.markError();
+						this.endGame(false, lastMark);
 						return false;
 				}
 				--markNum;
@@ -466,9 +616,7 @@
 					lastMark = self;
 					self.mark();
 					// 游戏获胜结束
-					if(markNum == 0) {	
-						this.endGame(this.lastMarkCheck());
-					}
+					this.endGameCheck();
 				}
 			}
 		},
@@ -495,32 +643,33 @@
 				}
 				if(prev < 0 && next > blocks.length - 1) {
 					window.cancelAnimationFrame(explodeAnimateId);
-					// 游戏失败
-					main.endGame(false);	
 				}else{
 					explodeAnimateId = window.requestAnimationFrame(explodeAll);
 				}
 			}
 			
 			explodeAll();
-			/* for(let b of boomMap) {
-				if(b[0] != self._id) {
-					b[1].click();
-				}
-			} */
+		},
+		endGameCheck: function() {
+			if(!(markNum > 0) && this.lastMarkCheck()) {	
+				this.endGame(true);
+			}
 		},
 		// 结束游戏
-		endGame: function(isSuccess) {
+		endGame: function(isSuccess, self) {
 			endGame = true;
 			
 			if(isSuccess == true) {
-				this._drawDialog('Σ( ° △ °|||)︴成，成功了', '点击画面再试一次？', 500);
+				this._drawFaceArea(3);
+				this._drawDialog('Σ( ° △ °|||)︴成，成功了', '点击画面再试一次？', dialogDisplayDelayTimeMillis);
 				loseCount = 0;
 			}else {
+				this._drawFaceArea(2);
+				this.showAllBooms(self);
 				if(loseCount < 3) {
-					this._drawDialog('(￣△￣；)游戏结束', '点击画面再试一次？', 500);
+					this._drawDialog('(￣△￣；)游戏结束', '点击画面再试一次？', dialogDisplayDelayTimeMillis);
 				}else {
-					this._drawDialog('_(:з」∠)_可以调整难度哦', '点击画面再试一次？', 500);
+					this._drawDialog('_(:з」∠)_可以调整难度哦', '点击画面再试一次？', dialogDisplayDelayTimeMillis);
 				}
 				loseCount ++;
 			}
@@ -538,6 +687,8 @@
 				markNum = boomNum;
 			}
 			let rate = canvasWidth / this._col >> 0;
+			// 初始化方块字体
+			font.default = 3*canvasWidth/1200 + 'rem' + fontFamily.thin;
 			// 初始化矩阵
 			if(blocks.length < 1) {
 				let blockSize = this._col * this._line;
@@ -579,16 +730,23 @@
 			this._cleanCanvas();
 			this.initBlocks();
 		},
-		// 整体初始化
-		init: function() {
-			// 初始化canvas
+		// 初始化canvas参数
+		initCanvas: function() {
 			let canvas = document.getElementById('container');
-			canvasWidth = canvas.width = screen.availWidth>canvasWidth? canvasWidth: screen.availWidth - titleBarHeight;
-			canvasHeight = canvas.height = screen.availWidth>canvasHeight? canvasHeight: screen.availWidth;
+			// 针对移动端进行宽高适配
+			let baseLineWidth = screen.availWidth;
+			if(baseLineWidth < canvasWidth) titleBarHeight = baseLineWidth/6;
+			canvasWidth = canvas.width = baseLineWidth>canvasWidth? canvasWidth: baseLineWidth - 20;
+			canvasHeight = canvas.height = baseLineWidth>canvasHeight? canvasHeight: baseLineWidth + titleBarHeight;
 			container = canvas;
+			
 			ctx = canvas.getContext("2d");
 			ctx.textAlign = 'center';
-			
+		},
+		// 整体初始化
+		init: function() {
+			// 初始化canvas参数
+			this.initCanvas();
 			// 初始化方块矩阵
 			this.initBlocks();
 			// 监听事件
@@ -630,12 +788,13 @@
 		},
 		// 弹出对话框
 		_drawDialog: function(title, content, delayMillis) {
-			if(typeof delayMillis != 'number' && delayMillis < 0) delayMillis = 1000;
+			if(typeof delayMillis != 'number' && delayMillis < 0) delayMillis = dialogDisplayDelayTimeMillis;
 			
 			let main = this;
 			let width = container.clientWidth/2;
 			let height = container.clientHeight/2 + titleBarHeight/2;
-			
+			// 初始化方块字体
+			font.title = 3*canvasWidth/1200 + 'rem' + fontFamily.thin;
 			let dialogAnimateId = 0;
 			let count = 0;
 			let countDown = 20;
@@ -677,7 +836,7 @@
 			this._drawTimeArea();
 			this._drawBoomArea();
 		},
-		_drawFaceArea: function() {
+		_drawFaceArea: function(num) {
 			let width = titleBarHeight*3/7;
 			let height = width;
 			let width_half = width/2;
@@ -689,17 +848,97 @@
 			ctx.fillRect(x, y, width, width);
 			
 			ctx.fillStyle = color.grey;
-			ctx.fillRect(x, y + height*7/8, width, height/8);
-			ctx.fillRect(x + height*7/8, y + height/8, width/8, height*7/8);
+			ctx.fillRect(x, y + height*15/16, width, height/16);
+			ctx.fillRect(x + height*15/16, y + height/16, width/16, height*15/16);
 			
 			ctx.fillStyle = color.mid_grey;
-			ctx.fillRect(x + width/8, y + height/8, width*3/4, height*3/4);
+			ctx.fillRect(x + width/16, y + height/16, width*7/8, height*7/8);
 			
-			ctx.fillStyle = color.yellow;
+			ctx.fillStyle = (num != 2)? color.yellow: color.mark_red;
 			ctx.beginPath();
 			ctx.ellipse(x + width/2, y + width/2, width*3/8, height*3/8, 0, 0, 2*Math.PI);
 			ctx.closePath();
 			ctx.fill();
+			
+			// face
+			ctx.fillStyle = color.black;
+			ctx.lineWidth = 1;
+			switch(num) {
+				case 1:
+					ctx.beginPath();
+					ctx.ellipse(x + width/3, y + width*3/8, width/16, height/16, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.fill();
+					ctx.beginPath();
+					ctx.ellipse(x + width*2/3, y + width*3/8, width/16, height/16, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.fill();
+					ctx.beginPath();
+					ctx.ellipse(x + width/2, y + width*5/8, width/16, height/12, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.stroke();
+					break;
+				case 2:
+					ctx.beginPath();
+					ctx.moveTo(x + width*3/12, y + width*5/16);
+					ctx.lineTo(x + width*5/12, y + width*7/16);
+					ctx.closePath();
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.moveTo(x + width*3/12, y + width*7/16);
+					ctx.lineTo(x + width*5/12, y + width*5/16);
+					ctx.closePath();
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.moveTo(x + width*7/12, y + width*5/16);
+					ctx.lineTo(x + width*3/4, y + width*7/16);
+					ctx.closePath();
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.moveTo(x + width*3/4, y + width*5/16);
+					ctx.lineTo(x + width*7/12, y + width*7/16);
+					ctx.closePath();
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.ellipse(x + width/2, y + width*5/8, width/16, height/12, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.stroke();
+					break;
+				case 3:
+					ctx.beginPath();
+					ctx.ellipse(x + width/3, y + width*3/8, width/8, height/16, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.fill();
+					ctx.beginPath();
+					ctx.ellipse(x + width*2/3, y + width*3/8, width/8, height/16, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.fill();
+					ctx.beginPath();
+					ctx.moveTo(x + width*1/4, y + width*5/16);
+					ctx.lineTo(x + width*3/4, y + width*5/16);
+					ctx.closePath();
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.ellipse(x + width/2, y + width*5/8, width/16, height/12, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.stroke();
+					break;
+				default:
+					ctx.beginPath();
+					ctx.ellipse(x + width/3, y + width*3/8, width/24, height/24, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.fill();
+					ctx.beginPath();
+					ctx.ellipse(x + width*2/3, y + width*3/8, width/24, height/24, 0, 0, 2*Math.PI);
+					ctx.closePath();
+					ctx.fill();
+					ctx.beginPath();
+					ctx.moveTo(x + width/3, y + width*5/8);
+					ctx.lineTo(x + width*2/3, y + width*5/8);
+					ctx.closePath();
+					ctx.stroke();
+					break;
+			}
 			
 			ctx.strokeStyle = color.black;
 			ctx.strokeRect(x, y, width, height);
@@ -721,6 +960,7 @@
 			
 			ctx.fillStyle = color.black;
 			ctx.fillRect(x, y, width, height);
+			
 		},
 		// 初始化事件
 		initInteractiveEvent: function() {
@@ -730,6 +970,12 @@
 			document.oncontextmenu = function(e){return false;}
 			// 鼠标事件
 			document.addEventListener('mousedown', function(evt) {
+				if(!endGame) {
+					main._drawFaceArea(1);
+				}
+			});
+			
+			document.addEventListener('mouseup', function(evt) {
 				let canvas = document.getElementById('container');
 				if(evt.clientX - canvas.offsetLeft > 0 
 					&& evt.clientY - canvas.offsetTop - titleBarHeight > 0 
@@ -739,15 +985,15 @@
 					let blockId = ((evt.clientY - canvas.offsetTop - titleBarHeight)/canvasWidth * main._line >> 0) * main._col 
 										+ (evt.clientX - canvas.offsetLeft)/canvasWidth * main._col >> 0;
 					if(!endGame) {
+						main._drawFaceArea();
 						if(evt.which == 1) {
 							main.showBorder(blocks[blockId], true);
 						}
 						if(evt.which == 3) {
 							main.mark(blocks[blockId]);
 						}
-						
 						if(evt.which == 2) {
-							main.showBorder(blocks[blockId], true);
+							main.showMarkedSurround(blocks[blockId], true);
 						}
 					}else {
 						main.reset();
